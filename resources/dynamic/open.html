@@ -1,0 +1,148 @@
+{%
+Dim inputName  =  CurrentQuestion.InputName()
+Dim inputValue =  CurrentQuestion.InputValue()
+
+Dim datalist    = CurrentADC.PropValue("datalist").Split("|")
+Dim attrList    = On(datalist.Count > 0, "list=\"" + inputName + "\"", "")
+Dim i
+
+
+Dim inputType  = CurrentADC.PropValue("opensubtype")
+Dim multiline  = (CurrentADC.PropValue("multiline") = "1") ' Convert to boolean
+
+Dim maxValue = CurrentQuestion.MaxValue
+Dim attrMax  = On(maxValue <> DK, "maxLength=\"" + maxValue + "\"", "")
+
+
+Dim attrRequired = On(CurrentQuestion.IsAllowDK, "required=\"required\"", "")
+
+Dim allowSaveFile = (CurrentADC.PropValue("allowSaveFile") = "1")
+
+Dim uploaderCaption = CurrentADC.PropValue("uploaderCaption")
+Dim dragdropCaption = CurrentADC.PropValue("dragdropCaption")
+
+Dim typeOfCapture = CurrentADC.PropValue("typeOfCapture")
+Dim showControls = (CurrentADC.PropValue("showControls") = "1")
+Dim autoplay = (CurrentADC.PropValue("autoplay") = "1")
+Dim loop = (CurrentADC.PropValue("loop") = "1")
+
+Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
+
+%}
+<script>
+    var uploadConfig_{%=CurrentADC.InstanceID%} = {
+        authenticationUrl : '{%=CurrentADC.PropValue("AusUrl")%}' + "/Authenticate",
+        uploadUrl : '{%=CurrentADC.PropValue("AusUrl")%}' + "/Upload",
+        apiKey : '{%=CurrentADC.PropValue("AusApiKey")%}',
+        secretKey : '{%=CurrentADC.PropValue("AusSecretKey")%}',
+        maxfilesize : parseInt('{%=CurrentADC.PropValue("AusMaxFileSize")%}', 10),
+        ausProjectName : '{%=CurrentADC.PropValue("AusProjectName")%}',
+        shortcut : '{%=CurrentQuestion.Shortcut%}',
+        seedvalue : '{%=Interview.Seed%}',
+        guidstring : '{%=Interview.GUID%}',
+        disabledUploadBtn : '{%= CurrentADC.PropValue("disableBtnUpload") %}',
+        allowUploadFileChange : '{%=CurrentADC.PropValue("allowUploadFileChange")%}',
+        ErrMsgColor : '{%=CurrentADC.PropValue("error_message_color")%}',
+        ErrMsgFileSizeExceeded : '{%=CurrentADC.PropValue("file_size_exceed_error")%}',
+        ErrMsgInvalidApiSecretKeys : '{%=CurrentADC.PropValue("invalid_api_secret_error")%}',
+        ErrMsgErrorAtUpload : '{%=CurrentADC.PropValue("error_occured_at_upload_error")%}',
+        ErrMsgSelectFile : '{%=CurrentADC.PropValue("error_select_file_error")%}',
+        ErrMsgStopRec : '{%=CurrentADC.PropValue("stop_recording_error")%}',
+        ErrMsgStartRec : '{%=CurrentADC.PropValue("start_recording_error")%}',
+        ErrMsgUserMediaAccess : '{%=CurrentADC.PropValue("user_media_access_error")%}',
+        ErrMsgSave : '{%=CurrentADC.PropValue("save_error")%}',
+        ErrMsgToken : '{%=CurrentADC.PropValue("error_while_generating_token")%}',
+        SuccessMsgColor : '{%=CurrentADC.PropValue("success_message_color")%}',
+        SuccessMsgUpload : '{%=CurrentADC.PropValue("success_message_upload")%}',
+        SuccessMsgSave : '{%=CurrentADC.PropValue("success_message_save")%}',
+        EnabledNextAfterUpload : '{%=CurrentADC.PropValue("nextAfterUpload")%}',
+        AutoSubmitAfterUpload : '{%=CurrentADC.PropValue("autoSubmitUpload")%}'        
+    };
+    var videoRecorder;
+</script>
+{%if enabledNextAfterUpload then%}
+<script>
+    // Hide the button Next
+    window.addEventListener('load', function () {
+        document.getElementsByName("Next")[0].hidden = true;
+    }, false);
+</script>
+{%EndIf%}
+{%if typeOfCapture = "image" Then%}
+<script>
+    // Displays the webcam stream on screen
+window.addEventListener("load", function () {
+    var video = document.getElementById('preview')
+    navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
+        setSrcObject(stream, video);
+    }).catch(function(error) {
+        displayErrorMessage(uploadConfig({%=CurrentADC.InstanceId%}).ErrMsgUserMediaAccess, {%=CurrentADC.InstanceId%});
+        console.error("Cannot access media devices: ", error);
+    });
+}, false);
+</script>
+{%EndIf%}
+{% if typeOfCapture = "video" then %}
+<script>
+ window.addEventListener("load", function () {
+     if (navigator.userAgent.split("Edge").length > 1) { // Edge 
+        displayErrorMessage(uploadConfig({%=CurrentADC.InstanceId%}).ErrMsgUserMediaAccess, {%=CurrentADC.InstanceId%});
+        document.getElementsByClassName("video_{%=CurrentADC.InstanceId%}")[0].style.display = "none";
+        document.getElementById("btnUpload_{%=CurrentADC.InstanceID%}").style.display = "none";
+        document.getElementById("btnSave_{%=CurrentADC.InstanceID%}").style.display = "none";
+     }
+}, false);
+</script>
+{%EndIf%}
+
+<script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+<div id="adc-errdiv_{%=CurrentADC.InstanceId%}">
+    <ul id="ulErrorMessages_{%=CurrentADC.InstanceID%}">
+    </ul>
+</div>
+<div id="adc-succdiv_{%=CurrentADC.InstanceId%}">
+    <span id="spanSuccessMessage_{%=CurrentADC.InstanceID%}"></span>
+</div>
+{% if typeOfCapture = "video" Then %}
+
+<div class="video_{%=CurrentADC.InstanceId%}">
+<label for="btn-start-recording" class="label-start btn primary">
+    <input type="button" id="btn-start-recording" onclick="startRecordingVideo({%=CurrentADC.InstanceId%});" hidden/>
+    {%=CurrentADC.PropValue("startBtnText")%}
+ </label>
+ <label for="btn-stop-recording" class="label-stop btn">
+     <input type="button" id="btn-stop-recording" onclick="stopRecordingVideo({%=CurrentADC.InstanceId%});" disabled="disabled"  hidden/>
+     {%=CurrentADC.PropValue("stopBtnText")%}
+ </label>
+<br/>
+    <video id="player" {% if showControls Then %}controls{% Endif %} {% if autoplay Then %}autoplay{% Endif %} {% if loop Then %}loop{% Endif %}></video>
+</div>
+<br />
+{%if allowSaveFile then%}
+<input type="button"  id="btnSave_{%=CurrentADC.InstanceId%}" class="btn" value="{%=CurrentADC.PropValue("btnSaveFileText")%}" onclick="saveVideo({%=CurrentADC.InstanceId%})"/>
+{%EndIf%}
+<input type="button" id="btnUpload_{%=CurrentADC.InstanceID%}" class="btn" value="{%=CurrentADC.PropValue("UploadButtonText")%}" onclick="uploadVideo({%=CurrentADC.InstanceID%})" />
+<input type="hidden" id="HidResult_{%=CurrentADC.InstanceID%}" name="{%= inputName %}" value="" {%:= attrMax %} {%:= attrRequired %}/>
+<div id="overlay_loader_{%=CurrentADC.InstanceID%}" class="loading hidden">Loading&#8230;</div>
+{% Endif %}
+
+{% if typeOfCapture = "image" Then %}
+<div class="video_{%=CurrentADC.InstanceId%}">
+    <label for="btn-capture-image" class="btn primary">
+        <input type="button" id="btn-capture-image" class="btn primary" onclick="captureImage({%=CurrentADC.InstanceId%});" hidden/>
+     {%=CurrentADC.PropValue("captureBtnText")%}
+    </label>
+<br/>
+    <video id="preview" autoplay></video>
+    <img id="capturedImage" src="" hidden/>
+    <canvas id="canvas" hidden></canvas>
+</div>
+{%if allowSaveFile then%}
+<input type="button"  id="btnSave_{%=CurrentADC.InstanceId%}" class="btn" value="{%=CurrentADC.PropValue("btnSaveFileText")%}" onclick="saveImage({%=CurrentADC.InstanceId%})" />
+{%EndIf%}
+<input type="button" id="btnUpload_{%=CurrentADC.InstanceID%}" class="btn" value="{%=CurrentADC.PropValue("UploadButtonText")%}" onclick="uploadImage({%=CurrentADC.InstanceID%})" />
+<input type="hidden" id="HidResult_{%=CurrentADC.InstanceID%}" name="{%= inputName %}" value="" {%:= attrMax %} {%:= attrRequired %}/>
+<div id="overlay_loader_{%=CurrentADC.InstanceID%}" class="loading hidden">Loading&#8230;</div>
+{% EndIf %}

@@ -1,0 +1,49 @@
+{%
+
+Dim typeOfCapture = CurrentADC.PropValue("typeOfCapture")
+
+Dim fontFamily = Theme.FontFamily
+Dim borderWidth = Theme.BorderWidth
+
+Dim controlWidth = CurrentADC.PropValue("controlWidth")
+Dim controlAlign = CurrentADC.PropValue("controlAlign")
+
+%}
+
+#adc_{%= CurrentADC.InstanceId %}.adc-default {
+    /*border-width: {%= Theme.BorderWidth %};*/
+    width: {%= controlWidth %};
+    {% If controlAlign = "center" Then %}
+    margin: auto;
+    text-align: center;
+    {% EndIf %}
+    {% If controlAlign = "left" Then%}
+	float: left;
+    {% EndIf %}
+    {% If controlAlign = "right" Then %}
+    float: right;
+    /*margin-left: 60%;*/
+    {% EndIf %}
+}
+/*
+#adc_{%= CurrentADC.InstanceId %} .dragdrop {
+    max-width: 100%;
+   /* border: 2px dashed 	#bfbfbf;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    
+    padding-top: 20%;
+    padding-bottom: 20%;*/
+/*    margin-bottom: 50px;
+    {% If controlAlign = "right" Then %}
+    float: right;
+    {% EndIf %}
+}
+*/
+
+#adc_{%= CurrentADC.InstanceId %} .label_uploader {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+
