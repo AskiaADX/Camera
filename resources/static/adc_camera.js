@@ -109,6 +109,7 @@ function uploadImage(instanceId){
 		displayErrorMessage(uploadConfig(instanceId).ErrMsgInvalidApiSecretKeys, instanceId);
         return;
     }
+    var image = document.getElementById("capturedImage");
     var image_b64 = window.atob(document.getElementById("capturedImage").src.split(",")[1]);
     var tmp = new Uint8Array(image_b64.length);
     for (var i = 0; i < image_b64.length; i++) {
