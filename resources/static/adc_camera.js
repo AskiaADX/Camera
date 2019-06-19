@@ -17,8 +17,9 @@ function saveVideo(instanceId){
     if (!hasClass(video, "saved")) {
         if(videoRecorder != undefined){
             if (window.navigator.msSaveOrOpenBlob) { // Edge
-                var blob = videoRecorder.getBlob();
-                window.navigator.msSaveOrOpenBlob(blob, "my_video.mp4");
+                videoRecorder.getBlob().then(function(blob) {
+                  window.navigator.msSaveOrOpenBlob(blob, "my_video.mp4");
+                });
             } else { // Others
                 var a = document.createElement("a");
                 a.href = video.src;
@@ -82,10 +83,15 @@ function uploadVideo(instanceId){
     }
 
     if(videoRecorder != undefined){ // if a video has been recorded
-        if(validFileSize(instanceId, videoRecorder.getBlob())){
+        var videoBlob;
+        videoRecorder.getBlob().then(function(blob) {
+          videoBlob = blob;
+        });
+
+        if(validFileSize(instanceId, videoBlob)){
             generateNewToken(function(token){
                 uploadConfig(instanceId).token=token;
-                sendFileTransferCall(instanceId, videoRecorder.getBlob(), 'video');
+                sendFileTransferCall(instanceId, videoBlob, 'video');
             }, instanceId);
         }
         else{
@@ -448,8 +454,11 @@ function stopRecordingVideo(instanceId) {
     var video = document.getElementById('player');
     videoRecorder.stopRecording().then(function() {
         console.info('stopRecording success');
-        var videoBlob = videoRecorder.getBlob();
-        video.src = URL.createObjectURL(videoBlob);
+
+        videoRecorder.getBlob().then(function(blob) {
+          video.src = URL.createObjectURL(blob);
+        });
+
         video.play();
         video.muted = false;
         videoRecorder.stream.stop();

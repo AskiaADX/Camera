@@ -56,7 +56,7 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
         SuccessMsgUpload : '{%=CurrentADC.PropValue("success_message_upload")%}',
         SuccessMsgSave : '{%=CurrentADC.PropValue("success_message_save")%}',
         EnabledNextAfterUpload : '{%=CurrentADC.PropValue("nextAfterUpload")%}',
-        AutoSubmitAfterUpload : '{%=CurrentADC.PropValue("autoSubmitUpload")%}'        
+        AutoSubmitAfterUpload : '{%=CurrentADC.PropValue("autoSubmitUpload")%}'
     };
     var videoRecorder;
 </script>
@@ -85,7 +85,7 @@ window.addEventListener("load", function () {
 {% if typeOfCapture = "video" then %}
 <script>
  window.addEventListener("load", function () {
-     if (navigator.userAgent.split("Edge").length > 1) { // Edge 
+     if (navigator.userAgent.split("Edge").length > 1) { // Edge
         displayErrorMessage(uploadConfig({%=CurrentADC.InstanceId%}).ErrMsgUserMediaAccess, {%=CurrentADC.InstanceId%});
         document.getElementsByClassName("video_{%=CurrentADC.InstanceId%}")[0].style.display = "none";
         document.getElementById("btnUpload_{%=CurrentADC.InstanceID%}").style.display = "none";
@@ -95,7 +95,7 @@ window.addEventListener("load", function () {
 </script>
 {%EndIf%}
 
-<script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
+<script src="https://www.webrtc-experiment.com/RecordRTC.js"></script>
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 
 <div id="adc-errdiv_{%=CurrentADC.InstanceId%}">
