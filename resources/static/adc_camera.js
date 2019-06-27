@@ -121,7 +121,8 @@ function uploadImage(instanceId){
         tmp[i] = image_b64.charCodeAt(i);
     }
     var file = new Blob([tmp], {type: "image/png"});
-
+    
+    var image = document.getElementById("capturedImage");
     if(!image.hasAttribute("hidden")){ // if a photo has been captured
         if(validFileSize(instanceId, file)){
             generateNewToken(function(token){
