@@ -56,7 +56,7 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
         SuccessMsgUpload : '{%=CurrentADC.PropValue("success_message_upload")%}',
         SuccessMsgSave : '{%=CurrentADC.PropValue("success_message_save")%}',
         EnabledNextAfterUpload : '{%=CurrentADC.PropValue("nextAfterUpload")%}',
-        AutoSubmitAfterUpload : '{%=CurrentADC.PropValue("autoSubmitUpload")%}'        
+        AutoSubmitAfterUpload : '{%=CurrentADC.PropValue("autoSubmitUpload")%}'
     };
 </script>
 {%if enabledNextAfterUpload then%}
@@ -85,7 +85,7 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
     {%EndIf%}
     {% if typeOfCapture = "image" then %}
     <input id="adc_uploader_{%=CurrentADC.InstanceId%}" type="file" accept="image/*" capture="{%=CurrentADC.PropValue("facingMode")%}" hidden>
-    {%=CurrentADC.PropValue("image_uploader_mobile_text")%}
+    {%=CurrentADC.PropValue("captureBtnText")%}
     {%EndIf%}
 </label>
 </div>
