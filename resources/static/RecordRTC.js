@@ -1,9 +1,9 @@
 'use strict';
 
-// Last time updated: 2019-06-24 7:56:58 AM UTC
+// Last time updated: 2022-04-05 11:18:05 AM UTC
 
 // ________________
-// RecordRTC v5.5.9
+// RecordRTC v5.6.2
 
 // Open-Sourced: https://github.com/muaz-khan/RecordRTC
 
@@ -16,7 +16,7 @@
 // RecordRTC.js
 
 /**
- * {@link https://github.com/muaz-khan/RecordRTC|RecordRTC} is a WebRTC JavaScript library for audio/video as well as screen activity recording. It supports Chrome, Firefox, Opera, Android, and Microsoft Edge. Platforms: Linux, Mac and Windows. 
+ * {@link https://github.com/muaz-khan/RecordRTC|RecordRTC} is a WebRTC JavaScript library for audio/video as well as screen activity recording. It supports Chrome, Firefox, Opera, Android, and Microsoft Edge. Platforms: Linux, Mac and Windows.
  * @summary Record audio, video or screen inside the browser.
  * @license {@link https://github.com/muaz-khan/RecordRTC/blob/master/LICENSE|MIT}
  * @author {@link https://MuazKhan.com|Muaz Khan}
@@ -420,7 +420,7 @@ function RecordRTC(mediaStream, config) {
          *    var blob = this.getBlob();
          *    video.src = this.toURL();
          * });
-         * 
+         *
          * // or otherwise
          * recorder.setRecordingDuration(fiveMinutes).onRecordingStopped(function() {
          *    var blob = this.getBlob();
@@ -781,7 +781,7 @@ function RecordRTC(mediaStream, config) {
          * @example
          * alert(recorder.version);
          */
-        version: '5.5.9'
+        version: '5.6.2'
     };
 
     if (!this) {
@@ -799,7 +799,7 @@ function RecordRTC(mediaStream, config) {
     return returnObject;
 }
 
-RecordRTC.version = '5.5.9';
+RecordRTC.version = '5.6.2';
 
 if (typeof module !== 'undefined' /* && !!module.exports*/ ) {
     module.exports = RecordRTC;
@@ -1815,7 +1815,10 @@ function invokeSaveAsDialog(file, fileName) {
     }
 
     var fileExtension = (file.type || 'video/webm').split('/')[1];
-
+    if (fileExtension.indexOf(';') !== -1) {
+        // extended mimetype, e.g. 'video/webm;codecs=vp8,opus'
+        fileExtension = fileExtension.split(';')[0];
+    }
     if (fileName && fileName.indexOf('.') !== -1) {
         var splitted = fileName.split('.');
         fileName = splitted[0];
@@ -2149,7 +2152,7 @@ function MediaStreamRecorder(mediaStream, config) {
             }
 
             if (typeof config.timeSlice === 'number') {
-                if (e.data && e.data.size && e.data.size > 100) {
+                if (e.data && e.data.size) {
                     arrayOfBlobs.push(e.data);
                     updateTimeStamp();
 
@@ -2258,10 +2261,10 @@ function MediaStreamRecorder(mediaStream, config) {
             updateTimeStamp();
             mediaRecorder.start(config.timeSlice);
         } else {
-            // default is 60 minutes; enough?
+            // default is 24 hours; enough? (thanks https://github.com/slidevjs/slidev/pull/488)
             // use config => {timeSlice: 1000} otherwise
 
-            mediaRecorder.start(3.6e+6);
+            mediaRecorder.start(24 * 60 * 60 * 1000);
         }
 
         if (config.initCallback) {
@@ -2457,8 +2460,8 @@ function MediaStreamRecorder(mediaStream, config) {
         return allStates;
     };
 
-    // if any Track within the MediaStream is muted or not enabled at any time, 
-    // the browser will only record black frames 
+    // if any Track within the MediaStream is muted or not enabled at any time,
+    // the browser will only record black frames
     // or silence since that is the content produced by the Track
     // so we need to stopRecording as soon as any single track ends.
     if (typeof config.checkForInactiveTracks === 'undefined') {
@@ -2569,8 +2572,8 @@ function StereoAudioRecorder(mediaStream, config) {
         console.log('StereoAudioRecorder is set to record number of channels: ' + numberOfAudioChannels);
     }
 
-    // if any Track within the MediaStream is muted or not enabled at any time, 
-    // the browser will only record black frames 
+    // if any Track within the MediaStream is muted or not enabled at any time,
+    // the browser will only record black frames
     // or silence since that is the content produced by the Track
     // so we need to stopRecording as soon as any single track ends.
     if (typeof config.checkForInactiveTracks === 'undefined') {
@@ -2729,21 +2732,21 @@ function StereoAudioRecorder(mediaStream, config) {
 
             var view = new DataView(buffer);
 
-            // RIFF chunk descriptor/identifier 
+            // RIFF chunk descriptor/identifier
             writeUTFBytes(view, 0, 'RIFF');
 
             // RIFF chunk length
             // changed "44" to "36" via #401
             view.setUint32(4, 36 + interleavedLength * 2, true);
 
-            // RIFF type 
+            // RIFF type
             writeUTFBytes(view, 8, 'WAVE');
 
-            // format chunk identifier 
+            // format chunk identifier
             // FMT sub-chunk
             writeUTFBytes(view, 12, 'fmt ');
 
-            // format chunk length 
+            // format chunk length
             view.setUint32(16, 16, true);
 
             // sample format (raw)
@@ -2752,23 +2755,23 @@ function StereoAudioRecorder(mediaStream, config) {
             // stereo (2 channels)
             view.setUint16(22, numberOfAudioChannels, true);
 
-            // sample rate 
+            // sample rate
             view.setUint32(24, sampleRate, true);
 
             // byte rate (sample rate * block align)
-            view.setUint32(28, sampleRate * 2, true);
+            view.setUint32(28, sampleRate * numberOfAudioChannels * 2, true);
 
-            // block align (channel count * bytes per sample) 
+            // block align (channel count * bytes per sample)
             view.setUint16(32, numberOfAudioChannels * 2, true);
 
-            // bits per sample 
+            // bits per sample
             view.setUint16(34, 16, true);
 
             // data sub-chunk
-            // data chunk identifier 
+            // data chunk identifier
             writeUTFBytes(view, 36, 'data');
 
-            // data chunk length 
+            // data chunk length
             view.setUint32(40, interleavedLength * 2, true);
 
             // write the PCM samples
@@ -2899,18 +2902,18 @@ function StereoAudioRecorder(mediaStream, config) {
         });
     };
 
-    if (typeof Storage === 'undefined') {
-        var Storage = {
+    if (typeof RecordRTC.Storage === 'undefined') {
+        RecordRTC.Storage = {
             AudioContextConstructor: null,
             AudioContext: window.AudioContext || window.webkitAudioContext
         };
     }
 
-    if (!Storage.AudioContextConstructor) {
-        Storage.AudioContextConstructor = new Storage.AudioContext();
+    if (!RecordRTC.Storage.AudioContextConstructor || RecordRTC.Storage.AudioContextConstructor.state === 'closed') {
+        RecordRTC.Storage.AudioContextConstructor = new RecordRTC.Storage.AudioContext();
     }
 
-    var context = Storage.AudioContextConstructor;
+    var context = RecordRTC.Storage.AudioContextConstructor;
 
     // creates an audio node from the microphone incoming stream
     var audioInput = context.createMediaStreamSource(mediaStream);
@@ -3323,7 +3326,7 @@ function CanvasRecorder(htmlElement, config) {
                 throw 'captureStream API are NOT available.';
             }
 
-            // Note: Jan 18, 2016 status is that, 
+            // Note: Jan 18, 2016 status is that,
             // Firefox MediaRecorder API can't record CanvasCaptureMediaStream object.
             mediaStreamRecorder = new MediaStreamRecorder(canvasMediaStream, {
                 mimeType: config.mimeType || 'video/webm'
@@ -4627,27 +4630,27 @@ function GifRecorder(mediaStream, config) {
         // external library to record as GIF images
         gifEncoder = new GIFEncoder();
 
-        // void setRepeat(int iter) 
-        // Sets the number of times the set of GIF frames should be played. 
+        // void setRepeat(int iter)
+        // Sets the number of times the set of GIF frames should be played.
         // Default is 1; 0 means play indefinitely.
         gifEncoder.setRepeat(0);
 
-        // void setFrameRate(Number fps) 
-        // Sets frame rate in frames per second. 
+        // void setFrameRate(Number fps)
+        // Sets frame rate in frames per second.
         // Equivalent to setDelay(1000/fps).
         // Using "setDelay" instead of "setFrameRate"
         gifEncoder.setDelay(config.frameRate || 200);
 
-        // void setQuality(int quality) 
-        // Sets quality of color quantization (conversion of images to the 
-        // maximum 256 colors allowed by the GIF specification). 
-        // Lower values (minimum = 1) produce better colors, 
-        // but slow processing significantly. 10 is the default, 
-        // and produces good color mapping at reasonable speeds. 
+        // void setQuality(int quality)
+        // Sets quality of color quantization (conversion of images to the
+        // maximum 256 colors allowed by the GIF specification).
+        // Lower values (minimum = 1) produce better colors,
+        // but slow processing significantly. 10 is the default,
+        // and produces good color mapping at reasonable speeds.
         // Values greater than 20 do not yield significant improvements in speed.
         gifEncoder.setQuality(config.quality || 10);
 
-        // Boolean start() 
+        // Boolean start()
         // This writes the GIF Header and returns false if it fails.
         gifEncoder.start();
 
@@ -4808,6 +4811,7 @@ function GifRecorder(mediaStream, config) {
         var video = document.createElement('video');
         video.muted = true;
         video.autoplay = true;
+        video.playsInline = true;
 
         isLoadedMetaData = false;
         video.onloadedmetadata = function() {
@@ -5666,7 +5670,7 @@ if (typeof RecordRTC !== 'undefined') {
  * recorder.startRecording()
  *         .then(successCB)
  *         .catch(errorCB);
- * // Note: You can access all RecordRTC API using "recorder.recordRTC" e.g. 
+ * // Note: You can access all RecordRTC API using "recorder.recordRTC" e.g.
  * recorder.recordRTC.onStateChanged = function(state) {};
  * recorder.recordRTC.setRecordingDuration(5000);
  * @see {@link https://github.com/muaz-khan/RecordRTC|RecordRTC Source Code}
@@ -5828,7 +5832,7 @@ function RecordRTCPromisesHandler(mediaStream, options) {
     };
 
     /**
-     * Destroy RecordRTC instance. Clear all recorders and objects.
+     * This method returns the internal recording object.
      * @method
      * @memberof RecordRTCPromisesHandler
      * @example
@@ -5837,7 +5841,7 @@ function RecordRTCPromisesHandler(mediaStream, options) {
      *     internalRecorder.addStreams([newAudioStream]);
      *     internalRecorder.resetVideoStreams([screenStream]);
      * }
-     * @returns {Object} Returns internal recording object.
+     * @returns {Object}
      */
     this.getInternalRecorder = function() {
         return new Promise(function(resolve, reject) {
@@ -5923,7 +5927,7 @@ function RecordRTCPromisesHandler(mediaStream, options) {
      * @example
      * alert(recorder.version);
      */
-    this.version = '5.5.9';
+    this.version = '5.6.2';
 }
 
 if (typeof RecordRTC !== 'undefined') {
@@ -5948,7 +5952,7 @@ if (typeof RecordRTC !== 'undefined') {
  * });
  * @see {@link https://github.com/muaz-khan/RecordRTC|RecordRTC Source Code}
  * @param {MediaStream} mediaStream - MediaStream object fetched using getUserMedia API or generated using captureStreamUntilEnded or WebAudio API.
- * @param {object} config - {webAssemblyPath:'webm-wasm.wasm',workerPath: 'webm-worker.js', frameRate: 30, width: 1920, height: 1080, bitrate: 1024}
+ * @param {object} config - {webAssemblyPath:'webm-wasm.wasm',workerPath: 'webm-worker.js', frameRate: 30, width: 1920, height: 1080, bitrate: 1024, realtime: true}
  */
 function WebAssemblyRecorder(stream, config) {
     // based on: github.com/GoogleChromeLabs/webm-wasm
@@ -5964,6 +5968,7 @@ function WebAssemblyRecorder(stream, config) {
     config.height = config.height || 480;
     config.frameRate = config.frameRate || 30;
     config.bitrate = config.bitrate || 1200;
+    config.realtime = config.realtime || true;
 
     function createBufferURL(buffer, type) {
         return URL.createObjectURL(new Blob([buffer], {
@@ -5971,23 +5976,45 @@ function WebAssemblyRecorder(stream, config) {
         }));
     }
 
+    var finished;
+
     function cameraStream() {
         return new ReadableStream({
             start: function(controller) {
                 var cvs = document.createElement('canvas');
                 var video = document.createElement('video');
+                var first = true;
                 video.srcObject = stream;
+                video.muted = true;
+                video.height = config.height;
+                video.width = config.width;
+                video.volume = 0;
                 video.onplaying = function() {
                     cvs.width = config.width;
                     cvs.height = config.height;
                     var ctx = cvs.getContext('2d');
                     var frameTimeout = 1000 / config.frameRate;
-                    setTimeout(function f() {
+                    var cameraTimer = setInterval(function f() {
+                        if (finished) {
+                            clearInterval(cameraTimer);
+                            controller.close();
+                        }
+
+                        if (first) {
+                            first = false;
+                            if (config.onVideoProcessStarted) {
+                                config.onVideoProcessStarted();
+                            }
+                        }
+
                         ctx.drawImage(video, 0, 0);
-                        controller.enqueue(
-                            ctx.getImageData(0, 0, config.width, config.height)
-                        );
-                        setTimeout(f, frameTimeout);
+                        if (controller._controlledReadableStream.state !== 'closed') {
+                            try {
+                                controller.enqueue(
+                                    ctx.getImageData(0, 0, config.width, config.height)
+                                );
+                            } catch (e) {}
+                        }
                     }, frameTimeout);
                 };
                 video.play();
@@ -5999,7 +6026,10 @@ function WebAssemblyRecorder(stream, config) {
 
     function startRecording(stream, buffer) {
         if (!config.workerPath && !buffer) {
+            finished = false;
+
             // is it safe to use @latest ?
+
             fetch(
                 'https://unpkg.com/webm-wasm@latest/dist/webm-worker.js'
             ).then(function(r) {
@@ -6031,12 +6061,13 @@ function WebAssemblyRecorder(stream, config) {
                     height: config.height,
                     bitrate: config.bitrate || 1200,
                     timebaseDen: config.frameRate || 30,
-                    realtime: true
+                    realtime: config.realtime
                 });
 
                 cameraStream().pipeTo(new WritableStream({
                     write: function(image) {
-                        if (!worker) {
+                        if (finished) {
+                            console.error('Got image, but recorder is finished!');
                             return;
                         }
 
@@ -6093,14 +6124,28 @@ function WebAssemblyRecorder(stream, config) {
         isPaused = false;
     };
 
-    function terminate() {
+    function terminate(callback) {
         if (!worker) {
+            if (callback) {
+                callback();
+            }
+
             return;
         }
 
+        // Wait for null event data to indicate that the encoding is complete
+        worker.addEventListener('message', function(event) {
+            if (event.data === null) {
+                worker.terminate();
+                worker = null;
+
+                if (callback) {
+                    callback();
+                }
+            }
+        });
+
         worker.postMessage(null);
-        worker.terminate();
-        worker = null;
     }
 
     var arrayOfBuffers = [];
@@ -6116,13 +6161,17 @@ function WebAssemblyRecorder(stream, config) {
      * });
      */
     this.stop = function(callback) {
-        terminate();
+        finished = true;
 
-        this.blob = new Blob(arrayOfBuffers, {
-            type: 'video/webm'
+        var recorder = this;
+
+        terminate(function() {
+            recorder.blob = new Blob(arrayOfBuffers, {
+                type: 'video/webm'
+            });
+
+            callback(recorder.blob);
         });
-
-        callback(this.blob);
     };
 
     // for debugging
