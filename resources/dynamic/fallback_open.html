@@ -1,31 +1,19 @@
-{% 
+{%
 Dim inputName  =  CurrentQuestion.InputName()
 Dim inputValue =  CurrentQuestion.InputValue()
 
-Dim datalist    = CurrentADC.PropValue("datalist").Split("|")     
-Dim attrList    = On(datalist.Count > 0, "list=\"" + inputName + "\"", "")
-Dim i
-
-
-Dim inputType  = CurrentADC.PropValue("opensubtype")
-Dim multiline  = (CurrentADC.PropValue("multiline") = "1") ' Convert to boolean
-
 Dim maxValue = CurrentQuestion.MaxValue
 Dim attrMax  = On(maxValue <> DK, "maxLength=\"" + maxValue + "\"", "")
-
 
 Dim attrRequired = On(CurrentQuestion.IsAllowDK, "required=\"required\"", "")
 
 Dim allowSaveFile = (CurrentADC.PropValue("allowSaveFile") = "1")
 
-Dim uploaderCaption = CurrentADC.PropValue("uploaderCaption")
-Dim dragdropCaption = CurrentADC.PropValue("dragdropCaption")
-
 Dim typeOfCapture = CurrentADC.PropValue("typeOfCapture")
 Dim showControls = (CurrentADC.PropValue("showControls") = "1")
 Dim autoplay = (CurrentADC.PropValue("autoplay") = "1")
 Dim loop = (CurrentADC.PropValue("loop") = "1")
- 
+
 %}
 <script>
     var uploadConfig_{%=CurrentADC.InstanceID%} = {
@@ -40,7 +28,6 @@ Dim loop = (CurrentADC.PropValue("loop") = "1")
         guidstring : '{%=Interview.GUID%}',
         disabledUploadBtn : '{%= CurrentADC.PropValue("disableBtnUpload") %}',
         allowUploadFileChange : '{%=CurrentADC.PropValue("allowUploadFileChange")%}',
-        ErrMsgColor : '{%=CurrentADC.PropValue("error_message_color")%}',
         ErrMsgFileSizeExceeded : '{%=CurrentADC.PropValue("file_size_exceed_error")%}',
         ErrMsgInvalidApiSecretKeys : '{%=CurrentADC.PropValue("invalid_api_secret_error")%}',
         ErrMsgErrorAtUpload : '{%=CurrentADC.PropValue("error_occured_at_upload_error")%}',
@@ -53,7 +40,7 @@ Dim loop = (CurrentADC.PropValue("loop") = "1")
         SuccessMsgColor : '{%=CurrentADC.PropValue("success_message_color")%}',
         SuccessMsgUpload : '{%=CurrentADC.PropValue("success_message_upload")%}',
         SuccessMsgSave : '{%=CurrentADC.PropValue("success_message_save")%}'
-    };    
+    };
 </script>
 <script>
 window.addEventListener("load", function () {
@@ -67,10 +54,3 @@ window.addEventListener("load", function () {
     </ul>
 </div>
 <div id="overlay_loader_{%=CurrentADC.InstanceID%}" class="loading hidden">Loading&#8230;</div>
-
-
-
-
-
-
-

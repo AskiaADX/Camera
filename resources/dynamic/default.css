@@ -8,9 +8,6 @@ Dim borderWidth = Theme.BorderWidth
 Dim controlWidth = CurrentADC.PropValue("controlWidth")
 Dim controlAlign = CurrentADC.PropValue("controlAlign")
 
-Dim paddingTopBottomDD = CurrentADC.PropValue("paddingTopBottomDD")
-Dim backgroundColorDragDrop = CurrentADC.PropValue("backgroundColorDragDrop")
-
 Dim videoWidth = CurrentADC.PropValue("videoWidth")
 
 %}
@@ -30,27 +27,12 @@ Dim videoWidth = CurrentADC.PropValue("videoWidth")
     {% EndIf %}
 }
 
-/*
-#adc_{%= CurrentADC.InstanceId %} .video_{%=CurrentADC.InstanceId%} {
-    max-width: 100%;
-    border: 2px dashed 	#bfbfbf;
-    border-radius: 3px;
-    {% if typeOfCapture = "none" then %}
-    /*background-color: #f2f2f2;*/
-    background-color: rgb({%= backgroundColorDragDrop%});
-    {% EndIf %}
-    padding-top: {%= paddingTopBottomDD %};
-    padding-bottom: {%= paddingTopBottomDD %};
-    margin-bottom: 50px;
-}
-*/
-
 #adc_{%= CurrentADC.InstanceId %} #player {
     width: {%= videoWidth %};
     height: auto;
     padding-top: 5%;
     padding-bottom: 5%;
-}    
+}
 
 {% if typeOfCapture = "image" then %}
 #adc_{%= CurrentADC.InstanceId %} #preview, #capturedImage {
@@ -58,14 +40,10 @@ Dim videoWidth = CurrentADC.PropValue("videoWidth")
     height: auto;
     padding-top: 5%;
     padding-bottom: 5%;
-}    
+}
 {% EndIf %}
 
 #adc_{%= CurrentADC.InstanceId %} label {
     padding-left: 20px;
     padding-right: 20px;
 }
-
-
-
-
