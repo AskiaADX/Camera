@@ -6,4 +6,5 @@ v1.0.4 - photo button caption disappears when mobile - fixed
 v1.1.0 - WebRTC,RecordRTC library update
    - Fixed - DOF runtime errors
 v2.0.0 - RecordRTC & WebRTC library update
+v2.0.1 - fixed/modernized buttons with button instead of input, removed onclick listeners with addeventhandler
       
