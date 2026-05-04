@@ -45,15 +45,12 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
         EnabledNextAfterUpload : '{%=CurrentADC.PropValue("nextAfterUpload")%}',
         AutoSubmitAfterUpload : '{%=CurrentADC.PropValue("autoSubmitUpload")%}'
     };
-
-    var videoRecorder;
 </script>
 
 {%if enabledNextAfterUpload then%}
 <script>
     window.addEventListener("load", function () {
         var nextButton = document.getElementsByName("Next")[0];
-
         if (nextButton) {
             nextButton.hidden = true;
         }
@@ -64,14 +61,7 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
 {%if typeOfCapture = "image" Then%}
 <script>
     window.addEventListener("load", function () {
-        var video = document.getElementById("preview");
-
-        navigator.mediaDevices.getUserMedia({ video: true }).then(function (stream) {
-            setSrcObject(stream, video);
-        }).catch(function (error) {
-            displayErrorMessage(uploadConfig_{%=CurrentADC.InstanceId%}.ErrMsgUserMediaAccess, {%=CurrentADC.InstanceId%});
-            console.error("Cannot access media devices: ", error);
-        });
+        startImagePreview({%=CurrentADC.InstanceId%});
     }, false);
 </script>
 {%EndIf%}
@@ -80,7 +70,7 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
 <script>
     window.addEventListener("load", function () {
         if (navigator.userAgent.split("Edge").length > 1) {
-            displayErrorMessage(uploadConfig_{%=CurrentADC.InstanceId%}.ErrMsgUserMediaAccess, {%=CurrentADC.InstanceId%});
+            displayErrorMessage(uploadConfig({%=CurrentADC.InstanceId%}).ErrMsgUserMediaAccess, {%=CurrentADC.InstanceId%});
 
             var videoContainer = document.getElementsByClassName("video_{%=CurrentADC.InstanceId%}")[0];
             var uploadButton = document.getElementById("btnUpload_{%=CurrentADC.InstanceID%}");
@@ -102,11 +92,6 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
 </script>
 {%EndIf%}
 
-<!-- 
-<script src="https://www.webrtc-experiment.com/RecordRTC.js"></script>
-<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script> 
--->
-
 <div id="adc-errdiv_{%=CurrentADC.InstanceId%}">
     <ul id="ulErrorMessages_{%=CurrentADC.InstanceID%}"></ul>
 </div>
@@ -121,7 +106,8 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
     <button
         type="button"
         id="btn-start-recording_{%=CurrentADC.InstanceId%}"
-        class="btn primary">
+        class="btn primary"
+        onclick="startRecordingVideo({%=CurrentADC.InstanceId%});">
         {%=CurrentADC.PropValue("startBtnText")%}
     </button>
 
@@ -129,6 +115,7 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
         type="button"
         id="btn-stop-recording_{%=CurrentADC.InstanceId%}"
         class="btn"
+        onclick="stopRecordingVideo({%=CurrentADC.InstanceId%});"
         disabled="disabled">
         {%=CurrentADC.PropValue("stopBtnText")%}
     </button>
@@ -136,7 +123,7 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
     <br/>
 
     <video
-        id="player"
+        id="player_{%=CurrentADC.InstanceId%}"
         {% if showControls Then %}controls{% Endif %}
         {% if autoplay Then %}autoplay{% Endif %}
         {% if loop Then %}loop{% Endif %}></video>
@@ -148,7 +135,8 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
 <button
     type="button"
     id="btnSave_{%=CurrentADC.InstanceId%}"
-    class="btn">
+    class="btn"
+    onclick="saveVideo({%=CurrentADC.InstanceId%});">
     {%=CurrentADC.PropValue("btnSaveFileText")%}
 </button>
 {%EndIf%}
@@ -156,7 +144,8 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
 <button
     type="button"
     id="btnUpload_{%=CurrentADC.InstanceID%}"
-    class="btn">
+    class="btn"
+    onclick="uploadVideo({%=CurrentADC.InstanceID%});">
     {%=CurrentADC.PropValue("UploadButtonText")%}
 </button>
 
@@ -178,22 +167,24 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
     <button
         type="button"
         id="btn-capture-image_{%=CurrentADC.InstanceId%}"
-        class="btn primary">
+        class="btn primary"
+        onclick="captureImage({%=CurrentADC.InstanceId%});">
         {%=CurrentADC.PropValue("captureBtnText")%}
     </button>
 
     <br/>
 
-    <video id="preview" autoplay></video>
-    <img id="capturedImage" src="" hidden/>
-    <canvas id="canvas" hidden></canvas>
+    <video id="preview_{%=CurrentADC.InstanceId%}" autoplay></video>
+    <img id="capturedImage_{%=CurrentADC.InstanceId%}" src="" hidden/>
+    <canvas id="canvas_{%=CurrentADC.InstanceId%}" hidden></canvas>
 </div>
 
 {%if allowSaveFile then%}
 <button
     type="button"
     id="btnSave_{%=CurrentADC.InstanceId%}"
-    class="btn">
+    class="btn"
+    onclick="saveImage({%=CurrentADC.InstanceId%});">
     {%=CurrentADC.PropValue("btnSaveFileText")%}
 </button>
 {%EndIf%}
@@ -201,7 +192,8 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
 <button
     type="button"
     id="btnUpload_{%=CurrentADC.InstanceID%}"
-    class="btn">
+    class="btn"
+    onclick="uploadImage({%=CurrentADC.InstanceID%});">
     {%=CurrentADC.PropValue("UploadButtonText")%}
 </button>
 
@@ -216,84 +208,3 @@ Dim enabledNextAfterUpload = (CurrentADC.PropValue("nextAfterUpload") = "1")
 <div id="overlay_loader_{%=CurrentADC.InstanceID%}" class="loading hidden">Loading&#8230;</div>
 
 {% EndIf %}
-
-<script>
-    (function () {
-        var instanceId = "{%=CurrentADC.InstanceID%}";
-        var typeOfCapture = "{%=typeOfCapture%}";
-
-        function bindMediaControlEvents() {
-            var btnStart = document.getElementById("btn-start-recording_" + instanceId);
-            var btnStop = document.getElementById("btn-stop-recording_" + instanceId);
-            var btnCapture = document.getElementById("btn-capture-image_" + instanceId);
-            var btnSave = document.getElementById("btnSave_" + instanceId);
-            var btnUpload = document.getElementById("btnUpload_" + instanceId);
-
-            if (typeOfCapture === "video") {
-                if (btnStart && !btnStart.dataset.mediaEventBound) {
-                    btnStart.addEventListener("click", function () {
-                        startRecordingVideo(instanceId);
-                    });
-
-                    btnStart.dataset.mediaEventBound = "true";
-                }
-
-                if (btnStop && !btnStop.dataset.mediaEventBound) {
-                    btnStop.addEventListener("click", function () {
-                        stopRecordingVideo(instanceId);
-                    });
-
-                    btnStop.dataset.mediaEventBound = "true";
-                }
-
-                if (btnSave && !btnSave.dataset.mediaEventBound) {
-                    btnSave.addEventListener("click", function () {
-                        saveVideo(instanceId);
-                    });
-
-                    btnSave.dataset.mediaEventBound = "true";
-                }
-
-                if (btnUpload && !btnUpload.dataset.mediaEventBound) {
-                    btnUpload.addEventListener("click", function () {
-                        uploadVideo(instanceId);
-                    });
-
-                    btnUpload.dataset.mediaEventBound = "true";
-                }
-            }
-
-            if (typeOfCapture === "image") {
-                if (btnCapture && !btnCapture.dataset.mediaEventBound) {
-                    btnCapture.addEventListener("click", function () {
-                        captureImage(instanceId);
-                    });
-
-                    btnCapture.dataset.mediaEventBound = "true";
-                }
-
-                if (btnSave && !btnSave.dataset.mediaEventBound) {
-                    btnSave.addEventListener("click", function () {
-                        saveImage(instanceId);
-                    });
-
-                    btnSave.dataset.mediaEventBound = "true";
-                }
-
-                if (btnUpload && !btnUpload.dataset.mediaEventBound) {
-                    btnUpload.addEventListener("click", function () {
-                        uploadImage(instanceId);
-                    });
-
-                    btnUpload.dataset.mediaEventBound = "true";
-                }
-            }
-        }
-
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", bindMediaControlEvents);
-        } else {
-            bindMediaControlEvents();
-        }
-    })();
-</script>

@@ -1,9 +1,103 @@
+var videoRecorders = videoRecorders || {};
+var imageStreams = imageStreams || {};
+
+function getVideoRecorder(instanceId) {
+    return videoRecorders[instanceId];
+}
+
+function setVideoRecorder(instanceId, recorder) {
+    videoRecorders[instanceId] = recorder;
+}
+
+function getSupportedVideoMimeType() {
+    if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
+        return "";
+    }
+
+    var mimeTypes = [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm;codecs=h264,opus",
+        "video/webm",
+        "video/mp4;codecs=h264,aac",
+        "video/mp4"
+    ];
+
+    for (var i = 0; i < mimeTypes.length; i++) {
+        if (MediaRecorder.isTypeSupported(mimeTypes[i])) {
+            return mimeTypes[i];
+        }
+    }
+
+    return "";
+}
+
+function getVideoFileExtension(blob) {
+    if (!blob || !blob.type) {
+        return "webm";
+    }
+
+    var mimeType = blob.type.toLowerCase();
+
+    if (mimeType.indexOf("mp4") > -1) {
+        return "mp4";
+    }
+
+    if (mimeType.indexOf("webm") > -1) {
+        return "webm";
+    }
+
+    if (mimeType.indexOf("ogg") > -1) {
+        return "ogv";
+    }
+
+    return "webm";
+}
+
+function getVideoFileName(blob, baseName) {
+    return (baseName || "my_video") + "." + getVideoFileExtension(blob);
+}
+
+function stopStreamTracks(stream) {
+    if (!stream || !stream.getTracks) {
+        return;
+    }
+
+    var tracks = stream.getTracks();
+
+    for (var i = 0; i < tracks.length; i++) {
+        try {
+            tracks[i].stop();
+        } catch (e) {}
+    }
+}
+
+function clearMediaSource(mediaElement) {
+    if (!mediaElement) {
+        return;
+    }
+
+    try {
+        mediaElement.pause();
+    } catch (e) {}
+
+    if ("srcObject" in mediaElement && mediaElement.srcObject) {
+        mediaElement.srcObject = null;
+    }
+
+    mediaElement.removeAttribute("src");
+
+    try {
+        mediaElement.load();
+    } catch (e) {}
+}
+
 function showOverlay(instanceId){
-    removeClass(getElementByDynamicId("overlay_loader", instanceId),'hidden');
+    removeClass(getElementByDynamicId("overlay_loader", instanceId), 'hidden');
 }
 
 function hideOverlay(instanceId){
-    addClass(getElementByDynamicId("overlay_loader", instanceId),'hidden');
+    addClass(getElementByDynamicId("overlay_loader", instanceId), 'hidden');
 }
 
 /*
@@ -11,28 +105,45 @@ function hideOverlay(instanceId){
 * 	Save the recorded video on the user's disk
 */
 function saveVideo(instanceId){
-	hideErrorMessage(instanceId);
+    hideErrorMessage(instanceId);
     hideSuccessMessage(instanceId);
-    var video = document.getElementById("player");
+
+    var video = getElementByDynamicId("player", instanceId);
+    var recorder = getVideoRecorder(instanceId);
+
     if (!hasClass(video, "saved")) {
-        if(videoRecorder != undefined){
-            if (window.navigator.msSaveOrOpenBlob) { // Edge
-                window.navigator.msSaveOrOpenBlob(videoRecorder.blob, "my_video.mp4");
-            } else { // Others
+        if (recorder != undefined && recorder.blob) {
+            var fileName = getVideoFileName(recorder.blob, "my_video");
+
+            if (window.navigator.msSaveOrOpenBlob) {
+                window.navigator.msSaveOrOpenBlob(recorder.blob, fileName);
+            } else {
                 var a = document.createElement("a");
-                a.href = video.src;
-                a.download = "my_video.mp4";
+                var objectUrl = video.src;
+
+                if (!objectUrl) {
+                    objectUrl = URL.createObjectURL(recorder.blob);
+                }
+
+                a.href = objectUrl;
+                a.download = fileName;
                 document.body.appendChild(a);
                 a.click();
+
                 setTimeout(function() {
                     document.body.removeChild(a);
-                    window.URL.revokeObjectURL(video.src);
                 }, 0);
             }
+
             addClass(video, "saved");
-            getElementByDynamicId("btnSave", instanceId).disabled = true;
+
+            var saveBtn = getElementByDynamicId("btnSave", instanceId);
+            if (saveBtn) {
+                saveBtn.disabled = true;
+            }
+
             displaySuccessMessage(uploadConfig(instanceId).SuccessMsgSave, uploadConfig(instanceId).SuccessMsgColor, instanceId);
-        } else{
+        } else {
             displayErrorMessage(uploadConfig(instanceId).ErrMsgSave, instanceId);
         }
     }
@@ -43,26 +154,30 @@ function saveVideo(instanceId){
 * 	Save the captured photo on the user's disk
 */
 function saveImage(instanceId){
-	hideErrorMessage(instanceId);
+    hideErrorMessage(instanceId);
     hideSuccessMessage(instanceId);
-    var image = document.getElementById("capturedImage");
-    if(!image.hasAttribute('hidden')){
-    	if (window.navigator.msSaveOrOpenBlob) { // Edge
-            var blob = document.getElementById("canvas").msToBlob();
+
+    var image = getElementByDynamicId("capturedImage", instanceId);
+    var canvas = getElementByDynamicId("canvas", instanceId);
+
+    if (image && !image.hasAttribute('hidden')) {
+        if (window.navigator.msSaveOrOpenBlob) {
+            var blob = canvas.msToBlob();
             window.navigator.msSaveOrOpenBlob(blob, "my_image.png");
-        } else { // Others
+        } else {
             var a = document.createElement("a");
             a.href = image.src;
             a.download = "my_image.png";
             document.body.appendChild(a);
             a.click();
+
             setTimeout(function() {
                 document.body.removeChild(a);
-                window.URL.revokeObjectURL(image.src);
             }, 0);
         }
+
         displaySuccessMessage(uploadConfig(instanceId).SuccessMsgSave, uploadConfig(instanceId).SuccessMsgColor, instanceId);
-    } else{
+    } else {
         displayErrorMessage(uploadConfig(instanceId).ErrMsgSave, instanceId);
     }
 }
@@ -72,29 +187,28 @@ function saveImage(instanceId){
 * 	Upload the recorded video on the server
 */
 function uploadVideo(instanceId){
-	hideErrorMessage(instanceId);
+    hideErrorMessage(instanceId);
     hideSuccessMessage(instanceId);
 
     if (!uploadConfig(instanceId).apiKey || !uploadConfig(instanceId).secretKey) {
-		displayErrorMessage(uploadConfig(instanceId).ErrMsgInvalidApiSecretKeys, instanceId);
+        displayErrorMessage(uploadConfig(instanceId).ErrMsgInvalidApiSecretKeys, instanceId);
         return;
     }
 
-    if(videoRecorder != undefined){ // if a video has been recorded
-        var videoBlob;
-        videoBlob = videoRecorder.blob;
+    var recorder = getVideoRecorder(instanceId);
 
-        if(validFileSize(instanceId, videoBlob)){
+    if (recorder != undefined && recorder.blob) {
+        var videoBlob = recorder.blob;
+
+        if (validFileSize(instanceId, videoBlob)) {
             generateNewToken(function(token){
-                uploadConfig(instanceId).token=token;
+                uploadConfig(instanceId).token = token;
                 sendFileTransferCall(instanceId, videoBlob, 'video');
             }, instanceId);
-        }
-        else{
+        } else {
             displayErrorMessage(uploadConfig(instanceId).ErrMsgFileSizeExceeded, instanceId);
         }
-    }
-    else{
+    } else {
         displayErrorMessage(uploadConfig(instanceId).ErrMsgSelectFile, instanceId);
     }
 }
@@ -104,34 +218,37 @@ function uploadVideo(instanceId){
 * 	Upload the captured photo on the server
 */
 function uploadImage(instanceId){
-	hideErrorMessage(instanceId);
+    hideErrorMessage(instanceId);
     hideSuccessMessage(instanceId);
 
     if (!uploadConfig(instanceId).apiKey || !uploadConfig(instanceId).secretKey) {
-		displayErrorMessage(uploadConfig(instanceId).ErrMsgInvalidApiSecretKeys, instanceId);
+        displayErrorMessage(uploadConfig(instanceId).ErrMsgInvalidApiSecretKeys, instanceId);
         return;
     }
-    var image_b64 = window.atob(document.getElementById("capturedImage").src.split(",")[1]);
+
+    var image = getElementByDynamicId("capturedImage", instanceId);
+
+    if (!image || image.hasAttribute("hidden") || !image.src) {
+        displayErrorMessage(uploadConfig(instanceId).ErrMsgSelectFile, instanceId);
+        return;
+    }
+
+    var image_b64 = window.atob(image.src.split(",")[1]);
     var tmp = new Uint8Array(image_b64.length);
+
     for (var i = 0; i < image_b64.length; i++) {
         tmp[i] = image_b64.charCodeAt(i);
     }
+
     var file = new Blob([tmp], {type: "image/png"});
 
-    var image = document.getElementById("capturedImage");
-    if(!image.hasAttribute("hidden")){ // if a photo has been captured
-        if(validFileSize(instanceId, file)){
-            generateNewToken(function(token){
-                uploadConfig(instanceId).token=token;
-                sendFileTransferCall(instanceId, file, 'image');
-            }, instanceId);
-        }
-        else{
-            displayErrorMessage(uploadConfig(instanceId).ErrMsgFileSizeExceeded, instanceId);
-        }
-    }
-    else{
-        displayErrorMessage(uploadConfig(instanceId).ErrMsgSelectFile, instanceId);
+    if (validFileSize(instanceId, file)) {
+        generateNewToken(function(token){
+            uploadConfig(instanceId).token = token;
+            sendFileTransferCall(instanceId, file, 'image');
+        }, instanceId);
+    } else {
+        displayErrorMessage(uploadConfig(instanceId).ErrMsgFileSizeExceeded, instanceId);
     }
 }
 
@@ -143,6 +260,7 @@ function uploadImage(instanceId){
 function validFileSize(instanceId, fileData){
     var filesize = 0;
     var maxsize = uploadConfig(instanceId).maxfilesize;
+
     if (fileData) {
         filesize = fileData.size / 1024;
     }
@@ -150,6 +268,7 @@ function validFileSize(instanceId, fileData){
     if (fileData && filesize > maxsize) {
         return false;
     }
+
     return true;
 }
 
@@ -159,7 +278,6 @@ function validFileSize(instanceId, fileData){
 * 	Generates tokens for the post call
 */
 function generateNewToken(callback, instanceId) {
-
     var data = {
         ApiKey: uploadConfig(instanceId).apiKey,
         SecretKey: uploadConfig(instanceId).secretKey
@@ -170,16 +288,17 @@ function generateNewToken(callback, instanceId) {
     var generateTokenSuccess = function (token) {
         callback(token);
     };
-    var generateTokenError = function (error) {
+
+    var generateTokenError = function () {
         hideOverlay(instanceId);
         displayErrorMessage(uploadConfig(instanceId).ErrMsgInvalidApiSecretKeys, instanceId);
     };
-    var generateTokenBeforeSend=function(){
+
+    var generateTokenBeforeSend = function(){
         showOverlay(instanceId);
     };
 
-    sendAjaxPostCall(url, data, true, generateTokenSuccess, generateTokenError,generateTokenBeforeSend);
-
+    sendAjaxPostCall(url, data, true, generateTokenSuccess, generateTokenError, generateTokenBeforeSend);
 }
 
 /*
@@ -189,7 +308,7 @@ function generateNewToken(callback, instanceId) {
 * 	Generates right url, success and error callbacks and transfers it to sendAjaxPostCall function
 */
 function sendFileTransferCall(instanceId, fileData, type) {
-    if(!uploadConfig(instanceId).token){
+    if (!uploadConfig(instanceId).token) {
         displayErrorMessage(uploadConfig(instanceId).ErrMsgToken, instanceId);
         return;
     }
@@ -200,40 +319,47 @@ function sendFileTransferCall(instanceId, fileData, type) {
     var guid = uploadConfig(instanceId).guidstring;
 
     var fileDataName = function () {
-       if (type == 'video') return 'file-name.webm';
-       if (type == 'image') return 'file-name.png';
-    }
+        if (type == 'video') return getVideoFileName(fileData, 'file-name');
+        if (type == 'image') return 'file-name.png';
+        return 'file-name';
+    };
 
-    // clean up guid of curly braces
     if (guid.charAt(0) == "{") guid = guid.substr(1);
     if (guid.charAt(guid.length - 1) == "}") guid = guid.substr(0, guid.length - 1);
 
-    var url=uploadConfig(instanceId).uploadUrl + "?tokenkey=" + uploadConfig(instanceId).token + "&filename=" + fileDataName()
-    + "&projectname=" + projectName + "&shortcut=" + shortcut + "&seed=" + seed + "&guid=" + guid;
+    var url = uploadConfig(instanceId).uploadUrl +
+        "?tokenkey=" + encodeURIComponent(uploadConfig(instanceId).token) +
+        "&filename=" + encodeURIComponent(fileDataName()) +
+        "&projectname=" + encodeURIComponent(projectName) +
+        "&shortcut=" + encodeURIComponent(shortcut) +
+        "&seed=" + encodeURIComponent(seed) +
+        "&guid=" + encodeURIComponent(guid);
 
     var uploadSuccessCallback = function (response) {
-        getElementByDynamicId("HidResult", instanceId).value=response.DestinationFileName;
+        getElementByDynamicId("HidResult", instanceId).value = response.DestinationFileName;
         displaySuccessMessage(uploadConfig(instanceId).SuccessMsgUpload, uploadConfig(instanceId).SuccessMsgColor, instanceId);
         hideOverlay(instanceId);
+
         if (uploadConfig(instanceId).disabledUploadBtn == 1) {
-	    	disableUploadBtn(instanceId);
+            disableUploadBtn(instanceId);
         }
+
         if (uploadConfig(instanceId).AutoSubmitAfterUpload == 1) {
-         	document.getElementsByTagName("form")[0].submit();
+            document.getElementsByTagName("form")[0].submit();
         } else {
             if (uploadConfig(instanceId).EnabledNextAfterUpload == 1) {
                 document.getElementsByName("Next")[0].hidden = false;
             }
         }
     };
-    var uploadErrorCallback = function (error) {
-        getElementByDynamicId("HidResult", instanceId).value='';
+
+    var uploadErrorCallback = function () {
+        getElementByDynamicId("HidResult", instanceId).value = '';
         displayErrorMessage(uploadConfig(instanceId).ErrMsgErrorAtUpload, instanceId);
         hideOverlay(instanceId);
     };
 
     sendAjaxPostCall(url, fileData, false, uploadSuccessCallback, uploadErrorCallback);
-
 }
 
 /*
@@ -245,9 +371,10 @@ function sendFileTransferCall(instanceId, fileData, type) {
 *	beforeSend {Function} Function to execute before sending request (optional)
 * 	Send the request and execute the callbacks
 */
-function sendAjaxPostCall(url, data, isJsonRequest, successCallback, errorCallback,beforeSend) {
+function sendAjaxPostCall(url, data, isJsonRequest, successCallback, errorCallback, beforeSend) {
     var http = new XMLHttpRequest();
     http.open("POST", url, true);
+
     if (isJsonRequest) {
         http.setRequestHeader("Content-type", "application/json");
         data = JSON.stringify(data);
@@ -255,18 +382,26 @@ function sendAjaxPostCall(url, data, isJsonRequest, successCallback, errorCallba
 
     http.onreadystatechange = function () {
         if (http.readyState == 4) {
+            var response = null;
+
+            try {
+                response = JSON.parse(http.responseText);
+            } catch (e) {
+                response = http.responseText;
+            }
+
             if (http.status == 200) {
-                var response = JSON.parse(http.responseText);
                 successCallback(response);
             } else {
-                var response = JSON.parse(http.responseText);
                 errorCallback(response);
             }
         }
-    }
-    if(beforeSend){
+    };
+
+    if (beforeSend) {
         beforeSend();
     }
+
     http.send(data);
 }
 
@@ -275,8 +410,12 @@ function sendAjaxPostCall(url, data, isJsonRequest, successCallback, errorCallba
 *	cls {String} A class
 * 	Returns a boolean depending on the element ele having the class cls or not
 */
-function hasClass(ele,cls) {
-    return ele.className.match(new RegExp('(\\s|^)'+cls+'(\\s|$)'));
+function hasClass(ele, cls) {
+    if (!ele || !ele.className) {
+        return false;
+    }
+
+    return ele.className.match(new RegExp('(\\s|^)' + cls + '(\\s|$)'));
 }
 
 /*
@@ -284,10 +423,14 @@ function hasClass(ele,cls) {
 *	cls {String} A class
 * 	Removes the class cls from element ele, if ele has the class cls
 */
-function removeClass(ele,cls) {
-    if (hasClass(ele,cls)) {
-        var reg = new RegExp('(\\s|^)'+cls+'(\\s|$)');
-        ele.className=ele.className.replace(reg,' ');
+function removeClass(ele, cls) {
+    if (!ele) {
+        return;
+    }
+
+    if (hasClass(ele, cls)) {
+        var reg = new RegExp('(\\s|^)' + cls + '(\\s|$)');
+        ele.className = ele.className.replace(reg, ' ');
     }
 }
 
@@ -296,9 +439,13 @@ function removeClass(ele,cls) {
 *	cls {String} A class
 * 	Add the class cls to the element ele, if ele has not the class cls already
 */
-function addClass(ele,cls) {
-    if (!hasClass(ele,cls)) {
-        ele.className += ' '+ cls;
+function addClass(ele, cls) {
+    if (!ele) {
+        return;
+    }
+
+    if (!hasClass(ele, cls)) {
+        ele.className += ' ' + cls;
     }
 }
 
@@ -309,11 +456,14 @@ function addClass(ele,cls) {
 */
 function displayErrorMessage(message, instanceId){
     hideOverlay(instanceId);
+
     var div = getElementByDynamicId("adc-errdiv", instanceId);
     addClass(div, "askia-errors-summary");
     div.style.marginBottom = "50px";
+
     var ul = getElementByDynamicId("ulErrorMessages", instanceId);
     ul.innerHTML = "";
+
     var li = document.createElement("li");
     li.appendChild(document.createTextNode(message));
     ul.appendChild(li);
@@ -327,14 +477,16 @@ function displayErrorMessage(message, instanceId){
 */
 function displaySuccessMessage(message, colorcode, instanceId){
     hideOverlay(instanceId);
+
     var div = getElementByDynamicId("adc-succdiv", instanceId);
-    div.style.backgroundColor= 'rgb(' + colorcode + ')';
+    div.style.backgroundColor = 'rgb(' + colorcode + ')';
     div.style.color = 'white';
     div.style.width = '100%';
     div.style.paddingTop = '15px';
     div.style.paddingBottom = '15px';
     div.style.marginBottom = '50px';
     div.style.borderRadius = '3px';
+
     var span = getElementByDynamicId("spanSuccessMessage", instanceId);
     span.innerHTML = message;
 }
@@ -345,8 +497,13 @@ function displaySuccessMessage(message, colorcode, instanceId){
 */
 function disableUploadBtn(instanceId) {
     var btn = getElementByDynamicId("btnUpload", instanceId);
+
+    if (!btn) {
+        return;
+    }
+
     btn.disabled = true;
-    addClass(btn,"disabled");
+    addClass(btn, "disabled");
     btn.style.cursor = "not-allowed";
 }
 
@@ -356,8 +513,13 @@ function disableUploadBtn(instanceId) {
 */
 function enableUploadBtn(instanceId) {
     var btn = getElementByDynamicId("btnUpload", instanceId);
-   	btn.disabled = false;
-    removeClass(btn,"disabled");
+
+    if (!btn) {
+        return;
+    }
+
+    btn.disabled = false;
+    removeClass(btn, "disabled");
     btn.style.cursor = "pointer";
 }
 
@@ -368,6 +530,7 @@ function enableUploadBtn(instanceId) {
 function hideSuccessMessage(instanceId) {
     var div = getElementByDynamicId("adc-succdiv", instanceId);
     div.removeAttribute("style");
+
     var span = getElementByDynamicId("spanSuccessMessage", instanceId);
     span.innerHTML = "";
 }
@@ -380,6 +543,7 @@ function hideErrorMessage(instanceId){
     var div = getElementByDynamicId("adc-errdiv", instanceId);
     removeClass(div, "askia-errors-summary");
     div.removeAttribute("style");
+
     var ul = getElementByDynamicId("ulErrorMessages", instanceId);
     ul.innerHTML = "";
 }
@@ -397,43 +561,23 @@ function getElementByDynamicId(elementId, instanceId) {
 * 	Return the uploadConfig variable containing properties of the current adc
 */
 function uploadConfig(instanceId) {
-	return eval('uploadConfig_' + instanceId);
+    return eval('uploadConfig_' + instanceId);
 }
 
 /*
 *	instanceId {Integer} ID of the current adc
-* 	Start the record of a video, displays the stream on screen, storing the stream in videoRecorder variable
+* 	Start image preview stream
 */
-function startRecordingVideo(instanceId) {
-    var video = document.getElementById('player');
-    removeClass(document.getElementsByClassName("label-start")[0], "primary");
-    addClass(document.getElementsByClassName("label-stop")[0], "primary");
-    removeClass(video, "saved");
-    getElementByDynamicId("btnSave",instanceId).disabled = false;
-    if (uploadConfig(instanceId).allowUploadFileChange == 1) {
-        enableUploadBtn(instanceId);
+function startImagePreview(instanceId) {
+    var video = getElementByDynamicId('preview', instanceId);
+
+    if (!video) {
+        return;
     }
-    document.getElementById('btn-start-recording').disabled = true;
-    navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: true
-    }).then(function(stream) {
+
+    navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
+        imageStreams[instanceId] = stream;
         setSrcObject(stream, video);
-        video.play();
-        video.muted = true;
-        videoRecorder = new RecordRTCPromisesHandler(stream, {
-            mimeType: 'video/mp4',
-            audioBitsPerSecond: 128000,
-            videoBitsPerSecond : 2500000,
-        });
-        videoRecorder.startRecording().then(function() {
-            console.info('Recording video ...');
-        }).catch(function(error) {
-            displayErrorMessage(uploadConfig(instanceId).ErrMsgStartRec, instanceId);
-            console.error('Cannot start video recording: ', error);
-        });
-        videoRecorder.stream = stream;
-        document.getElementById('btn-stop-recording').disabled = false;
     }).catch(function(error) {
         displayErrorMessage(uploadConfig(instanceId).ErrMsgUserMediaAccess, instanceId);
         console.error("Cannot access media devices: ", error);
@@ -442,25 +586,176 @@ function startRecordingVideo(instanceId) {
 
 /*
 *	instanceId {Integer} ID of the current adc
-* 	Stop the video recording, diplays the recorded video on screen and stores the video in videoRecorder variable
+* 	Start the record of a video, displays the stream on screen, storing the stream in videoRecorder variable
+*/
+function startRecordingVideo(instanceId) {
+    hideErrorMessage(instanceId);
+    hideSuccessMessage(instanceId);
+
+    var video = getElementByDynamicId('player', instanceId);
+    var startBtn = getElementByDynamicId('btn-start-recording', instanceId);
+    var stopBtn = getElementByDynamicId('btn-stop-recording', instanceId);
+    var saveBtn = getElementByDynamicId("btnSave", instanceId);
+
+    if (startBtn) {
+        startBtn.disabled = true;
+    }
+
+    if (stopBtn) {
+        stopBtn.disabled = true;
+    }
+
+    removeClass(video, "saved");
+
+    if (saveBtn) {
+        saveBtn.disabled = false;
+    }
+
+    if (uploadConfig(instanceId).allowUploadFileChange == 1) {
+        enableUploadBtn(instanceId);
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        displayErrorMessage(uploadConfig(instanceId).ErrMsgUserMediaAccess, instanceId);
+
+        if (startBtn) {
+            startBtn.disabled = false;
+        }
+
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true
+    }).then(function(stream) {
+        clearMediaSource(video);
+        setSrcObject(stream, video);
+        video.muted = true;
+
+        var recorderOptions = {
+            type: "video",
+            audioBitsPerSecond: 128000,
+            videoBitsPerSecond: 2500000
+        };
+
+        var supportedMimeType = getSupportedVideoMimeType();
+
+        if (supportedMimeType) {
+            recorderOptions.mimeType = supportedMimeType;
+        }
+
+        console.log("Selected video MIME type:", supportedMimeType || "browser default");
+
+        var recorder = new RecordRTCPromisesHandler(stream, recorderOptions);
+        recorder.stream = stream;
+        setVideoRecorder(instanceId, recorder);
+
+        var playPromise;
+
+        try {
+            playPromise = video.play();
+        } catch (e) {}
+
+        if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(function() {});
+        }
+
+        return recorder.startRecording();
+    }).then(function() {
+        console.info('Recording video ...');
+
+        if (stopBtn) {
+            stopBtn.disabled = false;
+        }
+    }).catch(function(error) {
+        console.error('Cannot start video recording: ', error);
+        displayErrorMessage(uploadConfig(instanceId).ErrMsgStartRec, instanceId);
+
+        var recorder = getVideoRecorder(instanceId);
+
+        if (recorder && recorder.stream) {
+            stopStreamTracks(recorder.stream);
+        }
+
+        clearMediaSource(video);
+        setVideoRecorder(instanceId, undefined);
+
+        if (startBtn) {
+            startBtn.disabled = false;
+        }
+
+        if (stopBtn) {
+            stopBtn.disabled = true;
+        }
+    });
+}
+
+/*
+*	instanceId {Integer} ID of the current adc
+* 	Stop the video recording, displays the recorded video on screen and stores the video in videoRecorder variable
 */
 function stopRecordingVideo(instanceId) {
-    removeClass(document.getElementsByClassName("label-stop")[0], "primary");
-    addClass(document.getElementsByClassName("label-start")[0], "primary");
-    document.getElementById('btn-stop-recording').disabled = true;
-    var video = document.getElementById('player');
-    videoRecorder.stopRecording().then(function() {
+    var startBtn = getElementByDynamicId('btn-start-recording', instanceId);
+    var stopBtn = getElementByDynamicId('btn-stop-recording', instanceId);
+    var video = getElementByDynamicId('player', instanceId);
+    var recorder = getVideoRecorder(instanceId);
+
+    if (stopBtn) {
+        stopBtn.disabled = true;
+    }
+
+    if (!recorder) {
+        displayErrorMessage(uploadConfig(instanceId).ErrMsgStopRec, instanceId);
+
+        if (startBtn) {
+            startBtn.disabled = false;
+        }
+
+        return;
+    }
+
+    recorder.stopRecording().then(function() {
         console.info('stopRecording success');
 
-        video.src = URL.createObjectURL(videoRecorder.blob);
+        clearMediaSource(video);
 
-        video.play();
+        if (!recorder.blob) {
+            throw "Empty video blob.";
+        }
+
+        video.src = URL.createObjectURL(recorder.blob);
         video.muted = false;
-        videoRecorder.stream.stop();
-        document.getElementById('btn-start-recording').disabled = false;
+
+        try {
+            video.load();
+        } catch (e) {}
+
+        var playPromise;
+
+        try {
+            playPromise = video.play();
+        } catch (e) {}
+
+        if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(function() {});
+        }
+
+        stopStreamTracks(recorder.stream);
+
+        if (startBtn) {
+            startBtn.disabled = false;
+        }
     }).catch(function(error) {
         displayErrorMessage(uploadConfig(instanceId).ErrMsgStopRec, instanceId);
         console.log("Stop recording error:", error);
+
+        stopStreamTracks(recorder && recorder.stream ? recorder.stream : null);
+        clearMediaSource(video);
+
+        if (startBtn) {
+            startBtn.disabled = false;
+        }
     });
 }
 
@@ -472,12 +767,20 @@ function captureImage(instanceId) {
     if (uploadConfig(instanceId).allowUploadFileChange == 1) {
         enableUploadBtn(instanceId);
     }
-    var video = document.getElementById('preview');
-    var canvas = document.getElementById("canvas");
-    var img = document.getElementById("capturedImage");
+
+    var video = getElementByDynamicId('preview', instanceId);
+    var canvas = getElementByDynamicId("canvas", instanceId);
+    var img = getElementByDynamicId("capturedImage", instanceId);
+
+    if (!video || !canvas || !img) {
+        displayErrorMessage(uploadConfig(instanceId).ErrMsgSave, instanceId);
+        return;
+    }
+
     if (img.hasAttribute("hidden")) {
         img.removeAttribute("hidden");
     }
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
