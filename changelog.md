@@ -7,4 +7,4 @@ v1.1.0 - WebRTC,RecordRTC library update
    - Fixed - DOF runtime errors
 v2.0.0 - RecordRTC & WebRTC library update
 v2.0.1 - fixed/modernized buttons with button instead of input, removed onclick listeners with addeventhandler
-v2.0.2 fixed issue where desktop recording wouldnt function properly      
+v2.0.2 - fixed issue where desktop recording wouldn't function properly      
